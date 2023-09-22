@@ -20,4 +20,10 @@ public class RestConstants {
 	
 	public static final String REST_ROOM_CREATE_EXISTING_USER = "ROOM_0001";
 	public static final String REST_ROOM_CREATE_EXISTING_USER_DESC = "Error while adding user to a room, already exists this user";
+	
+	public static final String REST_ROOM_USER_NOT_IN_ROOM = "ROOM_0002";
+	public static final String REST_ROOM_USER_NOT_IN_ROOM_DESC = "User not in room";
+	
+	public static final String REST_ROOM_INVALID_MOVE = "ROOM_0003";
+	public static final String REST_ROOM_INVALID_MOVE_DESC = "Invalid move";
 }
