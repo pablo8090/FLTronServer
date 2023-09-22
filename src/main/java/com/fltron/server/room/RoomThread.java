@@ -2,6 +2,9 @@ package com.fltron.server.room;
 
 import com.fltron.server.entities.Room;
 
+import lombok.Getter;
+
+@Getter
 public class RoomThread extends Thread {
 	
 	private Room room;

@@ -17,4 +17,7 @@ public class RestConstants {
 	// Rooms
 	public static final String REST_ROOM_CREATE_ERROR = "ROOM_0000";
 	public static final String REST_ROOM_CREATE_ERROR_DESC = "Error while adding user to a room";
+	
+	public static final String REST_ROOM_CREATE_EXISTING_USER = "ROOM_0001";
+	public static final String REST_ROOM_CREATE_EXISTING_USER_DESC = "Error while adding user to a room, already exists this user";
 }
