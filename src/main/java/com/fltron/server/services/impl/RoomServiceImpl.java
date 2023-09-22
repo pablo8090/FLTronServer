@@ -1,6 +1,8 @@
 package com.fltron.server.services.impl;
 
 import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -20,16 +22,17 @@ public class RoomServiceImpl extends BaseServiceImpl implements RoomService {
 //	@Autowired
 //	private RoomHandler roomHandler;
 	
-	private Room newRoom = new Room();
+	private ArrayList<Room> newRooms = new ArrayList<>();
 	ArrayList<RoomThread> startedRooms = new ArrayList<>();
 
 	@Override
-	public void joinRoom(ResponseDTO response, String userName) {
+	public void joinRoom(ResponseDTO response, String userName, Integer roomSize) {
 		try {
-			if (StringUtils.isBlank(userName)) {
+			if (StringUtils.isBlank(userName) || roomSize < 2) {
 				fillResponseRequestError(response);
 				return;
 			}
+			
 			
 			if (existsUser(userName)) {
 				fillResponse(response, RestConstants.REST_ROOM_CREATE_EXISTING_USER,
@@ -38,7 +41,7 @@ public class RoomServiceImpl extends BaseServiceImpl implements RoomService {
 			}
 			
 			
-			boolean addNew = addNewPlayer(response, userName);
+			boolean addNew = addNewPlayer(response, userName, roomSize);
 			if (!addNew) {
 				return;
 			} 
@@ -55,53 +58,69 @@ public class RoomServiceImpl extends BaseServiceImpl implements RoomService {
 	
 	private boolean existsUser(String userName) {
 		synchronized (startedRooms) {
-			for (RoomThread roomTh : startedRooms) {
-				Room room = roomTh.getRoom();
-				boolean exists = existsUserInRoom(room, userName);
-				if (exists) {
-					return true;
+			synchronized (newRooms) {
+				for (RoomThread roomTh : startedRooms) {
+					Room room = roomTh.getRoom();
+					boolean exists = existsUserInRoom(room, userName);
+					if (exists) {
+						return true;
+					}
+				}
+
+				for (Room room : newRooms) {
+					boolean exists = existsUserInRoom(room, userName);
+					if (exists) {
+						return true;
+					}
 				}
 			}
 		}
-		
 		return false;
 	}
 
 
 	private boolean existsUserInRoom(Room room, String userName) {
-		if (userName.equals(room.getPlayer1()) 
-				|| userName.equals(room.getPlayer2())) {
-			return true;
-		}
+		List<String> players = room.getPlayers();
+		for (String player : players) {
+			if (userName.equalsIgnoreCase(player)) {
+				return true;
+			}
+		}		
 		return false;
 	}
 
 
-	private boolean addNewPlayer (ResponseDTO response, String userName) {
-		synchronized (newRoom) {
+	private boolean addNewPlayer (ResponseDTO response, String userName, Integer roomSize) {
+		synchronized (newRooms) {
 			try {
-				if (StringUtils.isBlank(newRoom.getPlayer1())
-						&& StringUtils.isBlank(newRoom.getPlayer2())) {
-					newRoom.setPlayer1(userName);
-				} else if (!StringUtils.isBlank(newRoom.getPlayer1()) 
-						&& StringUtils.isBlank(newRoom.getPlayer2())) {
-					boolean alreadyExists = existsUserInRoom(newRoom, userName);
-					if (alreadyExists) {
-						fillResponse(response, RestConstants.REST_ROOM_CREATE_EXISTING_USER,
-								RestConstants.REST_ROOM_CREATE_EXISTING_USER_DESC);
-						return false; 
-					}
+				List<Room> roomsBySize = newRooms.stream()
+					    .filter(p -> p.getSize() == roomSize).collect(Collectors.toList());
+				
+				if (roomsBySize.isEmpty()) {
+					Room newRoom = new Room();
+					newRoom.getPlayers().add(userName);
+					newRoom.setSize(roomSize);
+					newRooms.add(newRoom);
 					
-					newRoom.setPlayer2(userName);
-					RoomThread rt = new RoomThread(newRoom);
-					rt.start();
-					startedRooms.add(rt);
-					newRoom = new Room();				
 				} else {
-					fillResponse(response, RestConstants.REST_ROOM_CREATE_EXISTING_USER,
-							RestConstants.REST_ROOM_CREATE_EXISTING_USER_DESC);
-					return false;
-				}
+					for (Room newRoom : roomsBySize) {
+						boolean alreadyExists = existsUserInRoom(newRoom, userName);
+						if (alreadyExists) {
+							fillResponse(response, RestConstants.REST_ROOM_CREATE_EXISTING_USER,
+									RestConstants.REST_ROOM_CREATE_EXISTING_USER_DESC);
+							return false; 
+						}
+						
+						List<String> roomPlayers = newRoom.getPlayers();
+						roomPlayers.add(userName);
+						if (roomPlayers.size() == newRoom.getSize()) {
+							RoomThread rt = new RoomThread(newRoom);
+							rt.start();
+							startedRooms.add(rt);
+							newRooms.remove(newRoom);
+						}
+					}
+				}				
 				
 				return true;
 				

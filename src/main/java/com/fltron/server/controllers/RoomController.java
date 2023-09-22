@@ -17,11 +17,12 @@ public class RoomController extends BaseController {
 	RoomService roomService;
 
 	@GetMapping("/joinRoom")
-	public RoomResponseDTO joinRoom (@RequestParam String userName) {
+	public RoomResponseDTO joinRoom (@RequestParam String userName, 
+			@RequestParam(defaultValue="2") Integer roomSize) {
 		RoomResponseDTO response = new RoomResponseDTO();
 		try {
 			
-			roomService.joinRoom(response, userName);
+			roomService.joinRoom(response, userName, roomSize);
 			
 		} catch (Exception e) {
 			fillGenericErrorResponse(response);
