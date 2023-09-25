@@ -42,6 +42,9 @@ public class RoomServiceImpl extends BaseServiceImpl implements RoomService {
 		}
 		
 		this.newRooms.clear();
+		for (RoomThread rt : this.startedRooms) {
+			rt.stop();
+		}
 		this.startedRooms.clear();
 		
 	}
