@@ -85,11 +85,11 @@
 		    <artifactId>jaxb-api</artifactId>
 		    <version>2.3.0</version>
 		</dependency>
-		<dependency>
+		<!-- <dependency>
 		    <groupId>org.hibernate</groupId>
 		    <artifactId>hibernate-entitymanager</artifactId>
 		    <version>5.2.3.Final</version>
-		</dependency>
+		</dependency>-->
 		<dependency>
 		    <groupId>org.javassist</groupId>
 		    <artifactId>javassist</artifactId>
