@@ -288,10 +288,11 @@ public class RoomThread extends Thread {
 			
 			CoordsDTO otherCoords = usersCoords.get(roomPlayer.getId());
 			
-			if (isHoritzontal && 
-					Math.abs(coords.getX() - otherCoords.getX())-(GameConstants.MOVEMENT_SPEED*2) <= 0) {				
+			if (isHoritzontal && coords.getY() == otherCoords.getY()
+					&& Math.abs(coords.getX() - otherCoords.getX())-(GameConstants.MOVEMENT_SPEED*2) <= 0) {				
 				return roomPlayer;				
-			} else if (!isHoritzontal && Math.abs(coords.getY() - otherCoords.getY())-(GameConstants.MOVEMENT_SPEED*2) <= 0) {
+			} else if (!isHoritzontal && coords.getX() == otherCoords.getX()
+					&& Math.abs(coords.getY() - otherCoords.getY())-(GameConstants.MOVEMENT_SPEED*2) <= 0) {
 				return roomPlayer;
 			}
 			
