@@ -5,5 +5,5 @@ import lombok.Setter;
 
 @Getter @Setter
 public class RoomResponseDTO extends ResponseDTO {
-	private Integer roomId;
+	private Long roomId;
 }

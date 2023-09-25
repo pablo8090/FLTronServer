@@ -8,7 +8,7 @@ import lombok.Setter;
 
 @Getter @Setter
 public class Room {
-	Integer id;
-	List<String> players = new ArrayList<>();
+	Long id;
+	List<User> players = new ArrayList<>();
 	Integer size = 2;
 }

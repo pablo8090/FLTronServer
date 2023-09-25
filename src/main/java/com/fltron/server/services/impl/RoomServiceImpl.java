@@ -6,10 +6,14 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
+import com.fltron.server.dto.CoordsDTO;
+import com.fltron.server.dto.MoveDTO;
+import com.fltron.server.dto.UserDTO;
 import com.fltron.server.dto.responses.ResponseDTO;
+import com.fltron.server.dto.responses.RoomDetailResponseDTO;
 import com.fltron.server.dto.responses.RoomResponseDTO;
-import com.fltron.server.entities.Coords;
 import com.fltron.server.entities.Room;
+import com.fltron.server.entities.User;
 import com.fltron.server.room.RoomThread;
 import com.fltron.server.services.RoomService;
 import com.fltron.server.utils.GenericUtils;
@@ -23,25 +27,25 @@ public class RoomServiceImpl extends BaseServiceImpl implements RoomService {
 	
 	private ArrayList<Room> newRooms = new ArrayList<>();
 	ArrayList<RoomThread> startedRooms = new ArrayList<>();
-	private Integer totalRooms = 0;
+	private Long totalRooms = 0L;
 
 	@Override
-	public void joinRoom(RoomResponseDTO response, String userName, Integer roomSize) {
+	public void joinRoom(RoomResponseDTO response, User user, Integer roomSize) {
 		try {
-			if (StringUtils.isBlank(userName) || roomSize < 2) {
+			if (roomSize < 2) {
 				fillResponseRequestError(response);
 				return;
 			}
 			
 			
-			if (existsUser(userName)) {
+			if (existsUser(user.getId())) {
 				fillResponse(response, RestConstants.REST_ROOM_CREATE_EXISTING_USER,
 						RestConstants.REST_ROOM_CREATE_EXISTING_USER_DESC);
 				return;
 			}
 			
 			
-			boolean addNew = addNewPlayer(response, userName, roomSize);
+			boolean addNew = addNewPlayer(response, user, roomSize);
 			if (!addNew) {
 				return;
 			} 
@@ -58,22 +62,22 @@ public class RoomServiceImpl extends BaseServiceImpl implements RoomService {
 
 
 	@Override
-	public void playerReady(ResponseDTO response, String userName, Integer roomId) {
+	public void playerReady(ResponseDTO response, User user, Long roomId) {
 		try {
-			if (StringUtils.isBlank(userName) || roomId < 0) {
+			if (roomId < 0) {
 				fillResponseRequestError(response);
 				return;
 			}
 						
 			
-			RoomThread roomTh = getRoomByUser(roomId, userName);
+			RoomThread roomTh = getRoomByUser(roomId, user);
 			if (roomTh == null) {
 				fillResponse(response, RestConstants.REST_ROOM_USER_NOT_IN_ROOM,
 						RestConstants.REST_ROOM_USER_NOT_IN_ROOM_DESC);
 				return;
 			}
 			
-			roomTh.userReady(userName);
+			roomTh.userReady(user.getId());
 			
 			fillResponseGenericOk(response);
 		} catch (Exception e) {
@@ -85,16 +89,16 @@ public class RoomServiceImpl extends BaseServiceImpl implements RoomService {
 	}
 	
 	@Override
-	public void playerMove(ResponseDTO response, String userName, Integer roomId, 
-			Short moveDirection, Short x, Short y) {
+	public void playerMove(ResponseDTO response, User user, Long roomId, 
+			Short moveDirection) {
 		try {
-			if (StringUtils.isBlank(userName) || moveDirection < 0) {
+			if (moveDirection < 0) {
 				fillResponseRequestError(response);
 				return;
 			}
 						
 			
-			RoomThread roomTh = getRoomByUser(roomId, userName);
+			RoomThread roomTh = getRoomByUser(roomId, user);
 			if (roomTh == null) {
 				fillResponse(response, RestConstants.REST_ROOM_USER_NOT_IN_ROOM,
 						RestConstants.REST_ROOM_USER_NOT_IN_ROOM_DESC);
@@ -107,8 +111,7 @@ public class RoomServiceImpl extends BaseServiceImpl implements RoomService {
 						RestConstants.REST_ROOM_INVALID_MOVE_DESC);
 				return;
 			}
-			Coords coords = new Coords(x, y);
-			roomTh.userMove(userName, moveDirection, coords );
+			roomTh.userMove(user.getId(), moveDirection );
 			
 			fillResponseGenericOk(response);
 		} catch (Exception e) {
@@ -118,9 +121,102 @@ public class RoomServiceImpl extends BaseServiceImpl implements RoomService {
 		}
 		
 	}
+	
+
+	@Override
+	public void getRoomDetail(RoomDetailResponseDTO response, User user, Long roomId) {
+		
+		try {
+			RoomThread roomTh = getRoomByUser(roomId, user);
+			Room room = null;
+			if (roomTh == null) {
+				room = getFromNewsRoomByUser(roomId, user);
+				if (room == null) {
+					fillResponse(response, RestConstants.REST_ROOM_USER_NOT_IN_ROOM,
+							RestConstants.REST_ROOM_USER_NOT_IN_ROOM_DESC);
+					return;
+				}
+			}
+			
+			
+			
+			fillRoomDetail(response, roomTh, room, user.getId());			
+			fillResponseGenericOk(response);
+		} catch (Exception e) {
+			fillResponseGenericError(response);
+			e.printStackTrace();
+			return;
+		}
+			
+	}
 
 
 	
+	private Room getFromNewsRoomByUser(Long roomId, User user) {
+		
+		List<Room> matchedNewRooms = newRooms.stream().filter(r -> r.getId() == roomId 
+				&& r.getPlayers().stream().map(p -> p.getId()).collect(Collectors.toList())
+					.contains(user.getId())).collect(Collectors.toList());
+		if (matchedNewRooms.size() == 1) {
+			return matchedNewRooms.get(0);
+		} 
+		
+		return null;
+		
+	}
+
+
+
+	private void fillRoomDetail(RoomDetailResponseDTO response, RoomThread roomTh, Room room, Long playerId) {
+		response.setRoomId(roomTh != null ? roomTh.getRoom().getId() : room.getId());
+		response.setRoomSize(roomTh != null ? roomTh.getRoom().getSize() : room.getSize());
+		response.setStarted(roomTh != null ? roomTh.isStarted() : false);
+		response.setFinished(roomTh != null ? roomTh.isFinished() : false);
+		response.setPlayers(roomTh != null ? fillUserDTO(roomTh) : fillUserDTO(room));
+		response.setYouReady(roomTh != null ? roomTh.getUsersReady().get(playerId) : false);
+		response.setRoomCreated(roomTh != null);
+		
+	}
+
+
+
+	private List<UserDTO> fillUserDTO(Room room) {
+		List<UserDTO> players = new ArrayList<>();
+		
+		for (User player : room.getPlayers()) {
+			UserDTO playerDTO = new UserDTO();
+			Long playerId = player.getId();
+			
+			playerDTO.setId(playerId);
+			playerDTO.setUsername(player.getUsername());
+			players.add(playerDTO);
+		}
+		return players;
+	}
+
+
+
+	private List<UserDTO> fillUserDTO(RoomThread roomTh) {
+		List<UserDTO> players = new ArrayList<>();
+		
+		for (User player : roomTh.getRoom().getPlayers()) {
+			UserDTO playerDTO = new UserDTO();
+			Long playerId = player.getId();
+			
+			playerDTO.setId(playerId);
+			playerDTO.setUsername(player.getUsername());
+			playerDTO.setColor(roomTh.getUsersColors().get(playerId));
+			playerDTO.setMoves(roomTh.getUsersMoves().get(playerId));
+			playerDTO.setCoords(roomTh.getUsersCoords().get(playerId));
+			players.add(playerDTO);
+		}
+		return players;
+	}
+
+
+
+
+
 	private boolean validateMove(short moveDirection) {
 		boolean valid = false;
 		short[] validMoves = GenericUtils.getValidMoves();
@@ -134,29 +230,30 @@ public class RoomServiceImpl extends BaseServiceImpl implements RoomService {
 
 
 
-	private RoomThread getRoomByUser(Integer roomId, String userName) {
+	private RoomThread getRoomByUser(Long roomId, User user) {
 		
 		List<RoomThread> matchedRooms = startedRooms.stream().filter(r -> r.getRoom().getId() == roomId 
-				&& r.getRoom().getPlayers().contains(userName)).collect(Collectors.toList());
+				&& r.getRoom().getPlayers().stream().map(p -> p.getId()).collect(Collectors.toList())
+					.contains(user.getId())).collect(Collectors.toList());
 		if (matchedRooms.size() == 1) {
 			return matchedRooms.get(0);
 		}
 		return null;
 	}
 	
-	private boolean existsUser(String userName) {
+	private boolean existsUser(Long userId) {
 		synchronized (startedRooms) {
 			synchronized (newRooms) {
 				for (RoomThread roomTh : startedRooms) {
 					Room room = roomTh.getRoom();
-					boolean exists = existsUserInRoom(room, userName);
+					boolean exists = existsUserInRoom(room, userId);
 					if (exists) {
 						return true;
 					}
 				}
 
 				for (Room room : newRooms) {
-					boolean exists = existsUserInRoom(room, userName);
+					boolean exists = existsUserInRoom(room, userId);
 					if (exists) {
 						return true;
 					}
@@ -167,10 +264,10 @@ public class RoomServiceImpl extends BaseServiceImpl implements RoomService {
 	}
 
 
-	private boolean existsUserInRoom(Room room, String userName) {
-		List<String> players = room.getPlayers();
-		for (String player : players) {
-			if (userName.equalsIgnoreCase(player)) {
+	private boolean existsUserInRoom(Room room, Long userId) {
+		List<User> players = room.getPlayers();
+		for (User player : players) {
+			if (player.getId() == userId) {
 				return true;
 			}
 		}		
@@ -178,7 +275,7 @@ public class RoomServiceImpl extends BaseServiceImpl implements RoomService {
 	}
 
 
-	private boolean addNewPlayer (RoomResponseDTO response, String userName, Integer roomSize) {
+	private boolean addNewPlayer (RoomResponseDTO response, User user, Integer roomSize) {
 		synchronized (newRooms) {
 			try {
 				List<Room> roomsBySize = newRooms.stream()
@@ -186,7 +283,7 @@ public class RoomServiceImpl extends BaseServiceImpl implements RoomService {
 				
 				if (roomsBySize.isEmpty()) {
 					Room newRoom = new Room();
-					newRoom.getPlayers().add(userName);
+					newRoom.getPlayers().add(user);
 					newRoom.setSize(roomSize);
 					newRoom.setId(totalRooms);
 					newRooms.add(newRoom);
@@ -195,15 +292,15 @@ public class RoomServiceImpl extends BaseServiceImpl implements RoomService {
 					
 				} else {
 					for (Room newRoom : roomsBySize) {
-						boolean alreadyExists = existsUserInRoom(newRoom, userName);
+						boolean alreadyExists = existsUserInRoom(newRoom, user.getId());
 						if (alreadyExists) {
 							fillResponse(response, RestConstants.REST_ROOM_CREATE_EXISTING_USER,
 									RestConstants.REST_ROOM_CREATE_EXISTING_USER_DESC);
 							return false; 
 						}
 						
-						List<String> roomPlayers = newRoom.getPlayers();
-						roomPlayers.add(userName);
+						List<User> roomPlayers = newRoom.getPlayers();
+						roomPlayers.add(user);
 						response.setRoomId(newRoom.getId());
 						if (roomPlayers.size() == newRoom.getSize()) {
 							RoomThread rt = new RoomThread(newRoom);
@@ -222,6 +319,9 @@ public class RoomServiceImpl extends BaseServiceImpl implements RoomService {
 			return false;
 		}	
 	}
+
+
+
 
 
 

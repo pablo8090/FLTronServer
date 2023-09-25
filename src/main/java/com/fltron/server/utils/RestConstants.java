@@ -14,6 +14,9 @@ public class RestConstants {
 	public static final String REST_GENERIC_ERROR_PARAM = "GEN_0003";
 	public static final String REST_GENERIC_ERROR_PARAM_DESC = "Mandatory params not in the request or bad format";
 	
+	public static final String REST_GENERIC_AUTH_ERROR = "GEN_0004";
+	public static final String REST_GENERIC_AUTH_ERROR_DESC = "User not in database";
+	
 	// Rooms
 	public static final String REST_ROOM_CREATE_ERROR = "ROOM_0000";
 	public static final String REST_ROOM_CREATE_ERROR_DESC = "Error while adding user to a room";
