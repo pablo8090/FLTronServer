@@ -29,6 +29,22 @@ public class RoomServiceImpl extends BaseServiceImpl implements RoomService {
 	ArrayList<RoomThread> startedRooms = new ArrayList<>();
 	private Long totalRooms = 0L;
 
+	
+
+
+	@Override
+	public void cleanRooms(RoomDetailResponseDTO response, User user) {
+		// TESTING PURPOUSES
+		if (!existsUser(user.getId())) {
+			fillResponse(response, RestConstants.REST_ROOM_CREATE_EXISTING_USER,
+					RestConstants.REST_ROOM_CREATE_EXISTING_USER_DESC);
+			return;
+		}
+		
+		this.newRooms.clear();
+		this.startedRooms.clear();
+		
+	}
 	@Override
 	public void joinRoom(RoomResponseDTO response, User user, Integer roomSize) {
 		try {
@@ -319,6 +335,8 @@ public class RoomServiceImpl extends BaseServiceImpl implements RoomService {
 			return false;
 		}	
 	}
+
+
 
 
 

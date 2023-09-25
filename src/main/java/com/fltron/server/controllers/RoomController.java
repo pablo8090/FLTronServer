@@ -100,4 +100,23 @@ public class RoomController extends BaseController {
 		
 		return response;
 	}
+	
+	@GetMapping("/cleanRooms")
+	public RoomDetailResponseDTO cleanRooms (@RequestParam String email) {
+		RoomDetailResponseDTO response = new RoomDetailResponseDTO();
+		try {
+			User user = getSessionUser(email);
+			if (user == null) {
+				fillAuthErrorResponse(response);
+				return response;
+			}
+			roomService.cleanRooms(response, user);
+			
+		} catch (Exception e) {
+			fillGenericErrorResponse(response);
+			e.printStackTrace();
+		}
+		
+		return response;
+	}
 }

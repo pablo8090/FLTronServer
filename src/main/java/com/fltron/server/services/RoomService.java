@@ -15,4 +15,6 @@ public interface RoomService {
 
 	void getRoomDetail(RoomDetailResponseDTO response, User user, Long roomId);
 
+	void cleanRooms(RoomDetailResponseDTO response, User user);
+
 }
